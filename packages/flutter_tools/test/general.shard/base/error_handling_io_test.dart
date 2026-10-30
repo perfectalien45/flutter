@@ -14,9 +14,17 @@ import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:process/process.dart';
 import 'package:test/fake.dart';
+import 'package:unified_analytics/unified_analytics.dart';
 
 import '../../src/common.dart';
 import '../../src/fake_process_manager.dart';
+
+final _FakeAnalytics fakeAnalytics = _FakeAnalytics();
+
+class _FakeAnalytics extends Fake implements Analytics {
+  @override
+  bool get telemetryEnabled => false;
+}
 
 final Platform windowsPlatform = FakePlatform(
   operatingSystem: 'windows',
@@ -28,6 +36,15 @@ final Platform linuxPlatform = FakePlatform(environment: <String, String>{});
 final Platform macOSPlatform = FakePlatform(
   operatingSystem: 'macos',
   environment: <String, String>{},
+);
+
+ProcessManager createProcessManager({
+  required ProcessManager delegate,
+  required Platform platform,
+}) => ErrorHandlingProcessManager(
+  delegate: delegate,
+  platform: platform,
+  analytics: () => fakeAnalytics,
 );
 
 void main() {
@@ -969,6 +986,9 @@ Please ensure that the SDK and/or project is installed in a location that has re
     const kDeviceFull = 112;
     const kUserMappedSectionOpened = 1224;
     const kUserPermissionDenied = 5;
+    const kApplicationControlPolicyBlocked = 4551;
+    const kAccessDisabledByPolicy = 1260;
+    const kSystemIntegrityPolicyViolation = 454;
 
     testWithoutContext(
       'when PackageProcess throws an exception containing non-executable bits',
@@ -990,7 +1010,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
           ),
         ]);
 
-        final ProcessManager processManager = ErrorHandlingProcessManager(
+        final ProcessManager processManager = createProcessManager(
           delegate: fakeProcessManager,
           platform: windowsPlatform,
         );
@@ -1023,7 +1043,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
           ),
         ]);
 
-        final ProcessManager processManager = ErrorHandlingProcessManager(
+        final ProcessManager processManager = createProcessManager(
           delegate: fakeProcessManager,
           platform: windowsPlatform,
         );
@@ -1051,7 +1071,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
         ),
       ]);
 
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: fakeProcessManager,
         platform: windowsPlatform,
       );
@@ -1088,7 +1108,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
         ),
       ]);
 
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: fakeProcessManager,
         platform: windowsPlatform,
       );
@@ -1124,7 +1144,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
         ),
       ]);
 
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: fakeProcessManager,
         platform: windowsPlatform,
       );
@@ -1151,7 +1171,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
         const ProcessException('', <String>[], '', kUserPermissionDenied),
       );
 
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: throwingFakeProcessManager,
         platform: windowsPlatform,
       );
@@ -1163,6 +1183,49 @@ Please ensure that the SDK and/or project is installed in a location that has re
         throwsToolExit(message: expectedMessage),
       );
     });
+
+    for (final (name, errorCode) in const <(String, int)>[
+      ('Windows Application Control policy', kApplicationControlPolicyBlocked),
+      ('Windows group policy', kAccessDisabledByPolicy),
+      ('Windows system integrity policy violation', kSystemIntegrityPolicyViolation),
+    ]) {
+      testWithoutContext('when blocked by $name', () {
+        final fakeProcessManager = FakeProcessManager.list(<FakeCommand>[
+          FakeCommand(
+            command: const <String>['foo'],
+            exception: ProcessException('foo', const <String>[], 'Blocked', errorCode),
+          ),
+          FakeCommand(
+            command: const <String>['foo'],
+            exception: ProcessException('foo', const <String>[], 'Blocked', errorCode),
+          ),
+          FakeCommand(
+            command: const <String>['foo'],
+            exception: ProcessException('foo', const <String>[], 'Blocked', errorCode),
+          ),
+        ]);
+
+        final ProcessManager processManager = createProcessManager(
+          delegate: fakeProcessManager,
+          platform: windowsPlatform,
+        );
+
+        const expectedMessage =
+            'An Application Control policy or security policy has blocked execution.';
+        expect(
+          () async => processManager.start(<String>['foo']),
+          throwsToolExit(message: expectedMessage),
+        );
+        expect(
+          () async => processManager.run(<String>['foo']),
+          throwsToolExit(message: expectedMessage),
+        );
+        expect(
+          () => processManager.runSync(<String>['foo']),
+          throwsToolExit(message: expectedMessage),
+        );
+      });
+    }
   });
 
   group('ProcessManager on linux throws tool exit', () {
@@ -1185,7 +1248,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
         ),
       ]);
 
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: fakeProcessManager,
         platform: linuxPlatform,
       );
@@ -1220,7 +1283,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
           exception: ProcessException('', <String>[], '', eacces),
         ),
       ]);
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: fakeProcessManager,
         platform: linuxPlatform,
       );
@@ -1248,7 +1311,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
         const ProcessException('', <String>[], '', eacces),
       );
 
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: throwingFakeProcessManager,
         platform: linuxPlatform,
       );
@@ -1287,7 +1350,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
           exception: ProcessException('', <String>[], '', enospc),
         ),
       ]);
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: fakeProcessManager,
         platform: macOSPlatform,
       );
@@ -1323,7 +1386,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
           exception: ProcessException('', <String>[], '', eacces),
         ),
       ]);
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: fakeProcessManager,
         platform: macOSPlatform,
       );
@@ -1351,7 +1414,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
         const ProcessException('', <String>[], '', eacces),
       );
 
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: throwingFakeProcessManager,
         platform: macOSPlatform,
       );
@@ -1384,7 +1447,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
         ),
       ]);
 
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: fakeProcessManager,
         platform: macOSPlatform,
       );
@@ -1415,7 +1478,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
         ),
       ]);
 
-      final ProcessManager processManager = ErrorHandlingProcessManager(
+      final ProcessManager processManager = createProcessManager(
         delegate: fakeProcessManager,
         platform: macOSPlatform,
       );
@@ -1434,7 +1497,7 @@ Please ensure that the SDK and/or project is installed in a location that has re
 
   testWithoutContext('ErrorHandlingProcessManager delegates killPid correctly', () async {
     final fakeProcessManager = FakeSignalProcessManager();
-    final ProcessManager processManager = ErrorHandlingProcessManager(
+    final ProcessManager processManager = createProcessManager(
       delegate: fakeProcessManager,
       platform: linuxPlatform,
     );

@@ -7,24 +7,34 @@ import 'dart:convert';
 import 'dart:io' as io;
 
 import 'package:fake_async/fake_async.dart';
+import 'package:file/memory.dart';
+import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/process.dart';
+<<<<<<< HEAD
 import 'package:flutter_tools/src/build_info.dart';
+=======
+import 'package:flutter_tools/src/base/version.dart';
+import 'package:flutter_tools/src/build_info.dart';
+import 'package:flutter_tools/src/ios/device_support.dart';
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
 import 'package:flutter_tools/src/ios/lldb.dart';
 import 'package:test/fake.dart';
 
 import '../../src/common.dart';
+import '../../src/context.dart';
 import '../../src/fake_process_manager.dart';
+
+const _deviceId = '123';
+const _appProcessId = 5678;
+const _breakpointId = 123;
 
 void main() {
   testWithoutContext('attachAndStart fails if lldb fails', () async {
-    const deviceId = '123';
-    const appProcessId = 5678;
-
     final processCompleter = Completer<void>();
     final lldbCommand = FakeLLDBCommand(
-      command: const <String>['lldb'],
+      command: const <String>['xcrun', 'lldb'],
       completer: processCompleter,
       stdin: io.IOSink(StreamController<List<int>>().sink),
       stdout: const Stream.empty(),
@@ -37,13 +47,26 @@ void main() {
 
     final processManager = FakeLLDBProcessManager([lldbCommand]);
     final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+<<<<<<< HEAD
     final lldb = LLDB(logger: logger, processUtils: processUtils);
+=======
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(16, 0, 0),
+    );
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
 
     final bool success = await lldb.attachAndStart(
-      deviceId: deviceId,
-      appProcessId: appProcessId,
+      deviceId: _deviceId,
+      appProcessId: _appProcessId,
       lldbLogForwarder: FakeLLDBLogForwarder(),
       mode: BuildMode.debug,
+<<<<<<< HEAD
+=======
+      deviceSupport: createDeviceSupport(),
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
     );
     expect(success, isFalse);
     expect(lldb.isRunning, isFalse);
@@ -53,24 +76,25 @@ void main() {
   });
 
   testWithoutContext('attachAndStart returns true on success', () async {
-    const deviceId = '123';
-    const appProcessId = 5678;
-    const breakpointId = 123;
-
     final breakPointCompleter = Completer<List<int>>();
     final processAttachCompleter = Completer<List<int>>();
-    final processResumedCompleted = Completer<List<int>>();
+    final setupStopHooksCompleter = Completer<List<int>>();
+    final platformStatusCompleter = Completer<List<int>>();
+    final processResumedCompleter = Completer<List<int>>();
 
     final stdoutStream = Stream<List<int>>.fromFutures([
       breakPointCompleter.future,
       processAttachCompleter.future,
-      processResumedCompleted.future,
+      setupStopHooksCompleter.future,
+      platformStatusCompleter.future,
+      processResumedCompleter.future,
     ]);
 
     final stdinController = StreamController<List<int>>();
 
     final processCompleter = Completer<void>();
     final lldbCommand = FakeLLDBCommand(
+<<<<<<< HEAD
       command: const <String>['lldb'],
       completer: processCompleter,
       stdin: io.IOSink(stdinController.sink),
@@ -156,6 +180,9 @@ Target 0: (Runner) stopped.
     final processCompleter = Completer<void>();
     final lldbCommand = FakeLLDBCommand(
       command: const <String>['lldb'],
+=======
+      command: const <String>['xcrun', 'lldb'],
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
       completer: processCompleter,
       stdin: io.IOSink(stdinController.sink),
       stdout: stdoutStream,
@@ -166,15 +193,37 @@ Target 0: (Runner) stopped.
 
     final processManager = FakeLLDBProcessManager([lldbCommand]);
     final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+<<<<<<< HEAD
     final lldb = LLDB(logger: logger, processUtils: processUtils);
 
     const processAttachMatcher = 'device process attach --pid $appProcessId';
     const processResumedMatcher = 'process continue';
     final expectedInputs = ['device select $deviceId', processAttachMatcher, processResumedMatcher];
+=======
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(16, 0, 0),
+    );
+
+    final Map<String, ({Completer<List<int>> completer, String out})?>
+    inputsAndOutputs = buildAttachInputsAndOutputs(
+      breakPointMatcher:
+          r"breakpoint set --auto-continue true --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'",
+      processResumingOutput: '1 location added to breakpoint 1\n',
+      breakPointCompleter: breakPointCompleter,
+      processAttachCompleter: processAttachCompleter,
+      setupStopHooksCompleter: setupStopHooksCompleter,
+      platformStatusCompleter: platformStatusCompleter,
+      processResumedCompleter: processResumedCompleter,
+    );
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
 
     stdinController.stream.transform<String>(utf8.decoder).transform(const LineSplitter()).listen((
       String line,
     ) {
+<<<<<<< HEAD
       expectedInputs.remove(line);
       if (line == processAttachMatcher) {
         processAttachCompleter.complete(
@@ -193,10 +242,16 @@ Target 0: (Runner) stopped.
       }
       if (line == processResumedMatcher) {
         processResumedCompleted.complete(utf8.encode('Process 568 resuming\n'));
+=======
+      final ({Completer<List<int>> completer, String out})? x = inputsAndOutputs.remove(line);
+      if (x != null) {
+        x.completer.complete(utf8.encode(x.out));
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
       }
     });
 
     final bool success = await lldb.attachAndStart(
+<<<<<<< HEAD
       deviceId: deviceId,
       appProcessId: appProcessId,
       lldbLogForwarder: FakeLLDBLogForwarder(),
@@ -206,14 +261,94 @@ Target 0: (Runner) stopped.
     expect(lldb.isRunning, isTrue);
     expect(lldb.appProcessId, appProcessId);
     expect(expectedInputs, isEmpty);
+=======
+      deviceId: _deviceId,
+      appProcessId: _appProcessId,
+      lldbLogForwarder: FakeLLDBLogForwarder(),
+      mode: BuildMode.debug,
+      deviceSupport: createDeviceSupport(),
+    );
+    expect(success, isTrue);
+    expect(lldb.isRunning, isTrue);
+    expect(lldb.appProcessId, _appProcessId);
+    expect(inputsAndOutputs, isEmpty);
+    expect(processManager.hasRemainingExpectations, isFalse);
+    expect(logger.errorText, isEmpty);
+  });
+
+  testWithoutContext('attachAndStart returns true on success for profile mode', () async {
+    final processAttachCompleter = Completer<List<int>>();
+    final setupStopHooksCompleter = Completer<List<int>>();
+    final platformStatusCompleter = Completer<List<int>>();
+    final processResumedCompleter = Completer<List<int>>();
+
+    final stdoutStream = Stream<List<int>>.fromFutures([
+      processAttachCompleter.future,
+      setupStopHooksCompleter.future,
+      platformStatusCompleter.future,
+      processResumedCompleter.future,
+    ]);
+
+    final stdinController = StreamController<List<int>>();
+
+    final processCompleter = Completer<void>();
+    final lldbCommand = FakeLLDBCommand(
+      command: const <String>['xcrun', 'lldb'],
+      completer: processCompleter,
+      stdin: io.IOSink(stdinController.sink),
+      stdout: stdoutStream,
+      stderr: const Stream.empty(),
+    );
+
+    final logger = BufferLogger.test();
+
+    final processManager = FakeLLDBProcessManager([lldbCommand]);
+    final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(27, 0, 0),
+    );
+
+    final Map<String, ({Completer<List<int>> completer, String out})?>
+    inputsAndOutputs = buildAttachInputsAndOutputs(
+      breakPointMatcher:
+          r"breakpoint set --auto-continue true --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'",
+      processResumingOutput: 'Process $_appProcessId resuming\n',
+      breakPointCompleter: null,
+      processAttachCompleter: processAttachCompleter,
+      setupStopHooksCompleter: setupStopHooksCompleter,
+      platformStatusCompleter: platformStatusCompleter,
+      processResumedCompleter: processResumedCompleter,
+    );
+
+    stdinController.stream.transform<String>(utf8.decoder).transform(const LineSplitter()).listen((
+      String line,
+    ) {
+      final ({Completer<List<int>> completer, String out})? x = inputsAndOutputs.remove(line);
+      if (x != null) {
+        x.completer.complete(utf8.encode(x.out));
+      }
+    });
+
+    final bool success = await lldb.attachAndStart(
+      deviceId: _deviceId,
+      appProcessId: _appProcessId,
+      lldbLogForwarder: FakeLLDBLogForwarder(),
+      mode: BuildMode.profile,
+      deviceSupport: createDeviceSupport(),
+    );
+    expect(success, isTrue);
+    expect(lldb.isRunning, isTrue);
+    expect(lldb.appProcessId, _appProcessId);
+    expect(inputsAndOutputs, isEmpty);
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
     expect(processManager.hasRemainingExpectations, isFalse);
     expect(logger.errorText, isEmpty);
   });
 
   testWithoutContext('attachAndStart returns false when stderr during log waiter', () async {
-    const deviceId = '123';
-    const appProcessId = 5678;
-
     final breakPointCompleter = Completer<List<int>>();
     final errorCompleter = Completer<List<int>>();
 
@@ -225,7 +360,7 @@ Target 0: (Runner) stopped.
 
     final processCompleter = Completer<void>();
     final lldbCommand = FakeLLDBCommand(
-      command: const <String>['lldb'],
+      command: const <String>['xcrun', 'lldb'],
       completer: processCompleter,
       stdin: io.IOSink(stdinController.sink),
       stdout: stdoutStream,
@@ -236,10 +371,23 @@ Target 0: (Runner) stopped.
 
     final processManager = FakeLLDBProcessManager([lldbCommand]);
     final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+<<<<<<< HEAD
     final lldb = LLDB(logger: logger, processUtils: processUtils);
 
     const breakPointMatcher = r"breakpoint set --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'";
     final expectedInputs = ['device select $deviceId', breakPointMatcher];
+=======
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(16, 0, 0),
+    );
+
+    const breakPointMatcher =
+        r"breakpoint set --auto-continue true --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'";
+    final expectedInputs = ['device select $_deviceId', breakPointMatcher];
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
     const errorText = "error: 'device' is not a valid command.\n";
 
     stdinController.stream.transform<String>(utf8.decoder).transform(const LineSplitter()).listen((
@@ -252,10 +400,14 @@ Target 0: (Runner) stopped.
     });
 
     final bool success = await lldb.attachAndStart(
-      deviceId: deviceId,
-      appProcessId: appProcessId,
+      deviceId: _deviceId,
+      appProcessId: _appProcessId,
       lldbLogForwarder: FakeLLDBLogForwarder(),
       mode: BuildMode.debug,
+<<<<<<< HEAD
+=======
+      deviceSupport: createDeviceSupport(),
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
     );
     expect(success, isFalse);
     expect(lldb.isRunning, isFalse);
@@ -266,9 +418,6 @@ Target 0: (Runner) stopped.
   });
 
   testWithoutContext('attachAndStart returns false when stderr not during log waiter', () async {
-    const deviceId = '123';
-    const appProcessId = 5678;
-
     final breakPointCompleter = Completer<List<int>>();
     final errorCompleter = Completer<List<int>>();
 
@@ -280,7 +429,7 @@ Target 0: (Runner) stopped.
 
     final processCompleter = Completer<void>();
     final lldbCommand = FakeLLDBCommand(
-      command: const <String>['lldb'],
+      command: const <String>['xcrun', 'lldb'],
       completer: processCompleter,
       stdin: io.IOSink(stdinController.sink),
       stdout: stdoutStream,
@@ -291,22 +440,41 @@ Target 0: (Runner) stopped.
 
     final processManager = FakeLLDBProcessManager([lldbCommand]);
     final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+<<<<<<< HEAD
     final lldb = LLDB(logger: logger, processUtils: processUtils);
     final expectedInputs = ['device select $deviceId'];
+=======
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(16, 0, 0),
+    );
+    final expectedInputs = [
+      'device select $_deviceId',
+      r"breakpoint set --auto-continue true --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'",
+    ];
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
     const errorText = "error: 'device' is not a valid command.\n";
 
     stdinController.stream.transform<String>(utf8.decoder).transform(const LineSplitter()).listen((
       String line,
     ) {
       expectedInputs.remove(line);
-      errorCompleter.complete(utf8.encode(errorText));
+      if (expectedInputs.isEmpty) {
+        errorCompleter.complete(utf8.encode(errorText));
+      }
     });
 
     final bool success = await lldb.attachAndStart(
-      deviceId: deviceId,
-      appProcessId: appProcessId,
+      deviceId: _deviceId,
+      appProcessId: _appProcessId,
       lldbLogForwarder: FakeLLDBLogForwarder(),
       mode: BuildMode.debug,
+<<<<<<< HEAD
+=======
+      deviceSupport: createDeviceSupport(),
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
     );
     expect(success, isFalse);
     expect(lldb.isRunning, isFalse);
@@ -317,14 +485,11 @@ Target 0: (Runner) stopped.
   });
 
   testWithoutContext('attachAndStart prints warning if takes too long', () async {
-    const deviceId = '123';
-    const appProcessId = 5678;
-
     final stdinController = StreamController<List<int>>();
 
     final processCompleter = Completer<void>();
     final lldbCommand = FakeLLDBCommand(
-      command: const <String>['lldb'],
+      command: const <String>['xcrun', 'lldb'],
       completer: processCompleter,
       stdin: io.IOSink(stdinController.sink),
       stdout: const Stream.empty(),
@@ -335,7 +500,16 @@ Target 0: (Runner) stopped.
 
     final processManager = FakeLLDBProcessManager([lldbCommand]);
     final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+<<<<<<< HEAD
     final lldb = LLDB(logger: logger, processUtils: processUtils);
+=======
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(16, 0, 0),
+    );
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
 
     final completer = Completer<void>();
 
@@ -349,10 +523,14 @@ Target 0: (Runner) stopped.
 
     await FakeAsync().run((FakeAsync time) {
       lldb.attachAndStart(
-        deviceId: deviceId,
-        appProcessId: appProcessId,
+        deviceId: _deviceId,
+        appProcessId: _appProcessId,
         lldbLogForwarder: FakeLLDBLogForwarder(),
         mode: BuildMode.debug,
+<<<<<<< HEAD
+=======
+        deviceSupport: createDeviceSupport(),
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
       );
       time.elapse(const Duration(minutes: 2));
       time.flushMicrotasks();
@@ -360,25 +538,25 @@ Target 0: (Runner) stopped.
     });
 
     expect(
-      logger.errorText,
+      logger.warningText,
       contains('LLDB is taking longer than expected to start debugging the app'),
     );
   });
 
   testWithoutContext('attachAndStart streams logs to LLDBLogForwarder', () async {
-    const deviceId = '123';
-    const appProcessId = 5678;
-    const breakpointId = 123;
-
     final breakPointCompleter = Completer<List<int>>();
     final processAttachCompleter = Completer<List<int>>();
-    final processResumedCompleted = Completer<List<int>>();
+    final setupStopHooksCompleter = Completer<List<int>>();
+    final platformStatusCompleter = Completer<List<int>>();
+    final processResumedCompleter = Completer<List<int>>();
     final logAfterAttachCompleter = Completer<List<int>>();
 
     final stdoutStream = Stream<List<int>>.fromFutures([
       breakPointCompleter.future,
       processAttachCompleter.future,
-      processResumedCompleted.future,
+      setupStopHooksCompleter.future,
+      platformStatusCompleter.future,
+      processResumedCompleter.future,
       logAfterAttachCompleter.future,
     ]);
 
@@ -386,7 +564,7 @@ Target 0: (Runner) stopped.
 
     final processCompleter = Completer<void>();
     final lldbCommand = FakeLLDBCommand(
-      command: const <String>['lldb'],
+      command: const <String>['xcrun', 'lldb'],
       completer: processCompleter,
       stdin: io.IOSink(stdinController.sink),
       stdout: stdoutStream,
@@ -397,6 +575,7 @@ Target 0: (Runner) stopped.
 
     final processManager = FakeLLDBProcessManager([lldbCommand]);
     final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+<<<<<<< HEAD
     final lldb = LLDB(logger: logger, processUtils: processUtils);
 
     const breakPointMatcher = r"breakpoint set --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'";
@@ -410,10 +589,31 @@ Target 0: (Runner) stopped.
       processAttachMatcher,
       processResumedMatcher,
     ];
+=======
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(16, 0, 0),
+    );
+
+    final Map<String, ({Completer<List<int>> completer, String out})?>
+    inputsAndOutputs = buildAttachInputsAndOutputs(
+      breakPointMatcher:
+          r"breakpoint set --auto-continue true --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'",
+      processResumingOutput: '1 location added to breakpoint 1\n',
+      breakPointCompleter: breakPointCompleter,
+      processAttachCompleter: processAttachCompleter,
+      setupStopHooksCompleter: setupStopHooksCompleter,
+      platformStatusCompleter: platformStatusCompleter,
+      processResumedCompleter: processResumedCompleter,
+    );
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
 
     stdinController.stream.transform<String>(utf8.decoder).transform(const LineSplitter()).listen((
       String line,
     ) {
+<<<<<<< HEAD
       expectedInputs.remove(line);
       if (line == breakPointMatcher) {
         breakPointCompleter.complete(
@@ -437,6 +637,11 @@ Target 0: (Runner) stopped.
       }
       if (line == processResumedMatcher) {
         processResumedCompleted.complete(utf8.encode('1 location added to breakpoint 1\n'));
+=======
+      final ({Completer<List<int>> completer, String out})? x = inputsAndOutputs.remove(line);
+      if (x != null) {
+        x.completer.complete(utf8.encode(x.out));
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
       }
     });
 
@@ -445,10 +650,14 @@ Target 0: (Runner) stopped.
     final lldbLogForwarder = FakeLLDBLogForwarder(expectedLog: expectedForwardedLog);
 
     final bool success = await lldb.attachAndStart(
-      deviceId: deviceId,
-      appProcessId: appProcessId,
+      deviceId: _deviceId,
+      appProcessId: _appProcessId,
       lldbLogForwarder: lldbLogForwarder,
       mode: BuildMode.debug,
+<<<<<<< HEAD
+=======
+      deviceSupport: createDeviceSupport(),
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
     );
 
     logAfterAttachCompleter.complete(utf8.encode('$ignoreLog\n$expectedForwardedLog\n'));
@@ -456,8 +665,8 @@ Target 0: (Runner) stopped.
 
     expect(success, isTrue);
     expect(lldb.isRunning, isTrue);
-    expect(lldb.appProcessId, appProcessId);
-    expect(expectedInputs, isEmpty);
+    expect(lldb.appProcessId, _appProcessId);
+    expect(inputsAndOutputs, isEmpty);
     expect(processManager.hasRemainingExpectations, isFalse);
     expect(logger.errorText, isEmpty);
     expect(lldbLogForwarder.logs.length, 1);
@@ -465,14 +674,11 @@ Target 0: (Runner) stopped.
   });
 
   testWithoutContext('exit returns true and kills process', () async {
-    const deviceId = '123';
-    const appProcessId = 5678;
-
     final stdinController = StreamController<List<int>>();
 
     final processCompleter = Completer<void>();
     final lldbCommand = FakeLLDBCommand(
-      command: const <String>['lldb'],
+      command: const <String>['xcrun', 'lldb'],
       completer: processCompleter,
       stdin: io.IOSink(stdinController.sink),
       stdout: const Stream.empty(),
@@ -483,7 +689,16 @@ Target 0: (Runner) stopped.
 
     final processManager = FakeLLDBProcessManager([lldbCommand]);
     final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+<<<<<<< HEAD
     final lldb = LLDB(logger: logger, processUtils: processUtils);
+=======
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(16, 0, 0),
+    );
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
 
     final lldbStarted = Completer<void>();
 
@@ -497,10 +712,14 @@ Target 0: (Runner) stopped.
 
     unawaited(
       lldb.attachAndStart(
-        deviceId: deviceId,
-        appProcessId: appProcessId,
+        deviceId: _deviceId,
+        appProcessId: _appProcessId,
         lldbLogForwarder: FakeLLDBLogForwarder(),
         mode: BuildMode.debug,
+<<<<<<< HEAD
+=======
+        deviceSupport: createDeviceSupport(),
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
       ),
     );
 
@@ -518,12 +737,214 @@ Target 0: (Runner) stopped.
 
     final processManager = FakeLLDBProcessManager([]);
     final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+<<<<<<< HEAD
     final lldb = LLDB(logger: logger, processUtils: processUtils);
+=======
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(16, 0, 0),
+    );
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
     expect(lldb.isRunning, isFalse);
     final bool exitStatus = lldb.exit();
     expect(exitStatus, isTrue);
     expect(lldb.isRunning, isFalse);
     expect(lldb.appProcessId, isNull);
+  });
+
+  group('addSymbolSearchPaths', () {
+    testWithoutContext(
+      'sends platform select remote-ios sysroot for arch symbol directory',
+      () async {
+        final fileSystem = MemoryFileSystem.test();
+        final Directory homeDir = fileSystem.directory('/Users/username');
+        final Directory archSymbols =
+            homeDir
+                .childDirectory('Library')
+                .childDirectory('Developer')
+                .childDirectory('Xcode')
+                .childDirectory('iOS DeviceSupport')
+                .childDirectory('iPhone15,2 17.0')
+                .childDirectory('arm64e')
+                .childDirectory('Symbols')
+              ..createSync(recursive: true);
+
+        final platformSelectCompleter = Completer<List<int>>();
+        final processAttachCompleter = Completer<List<int>>();
+        final setupStopHooksCompleter = Completer<List<int>>();
+        final platformStatusCompleter = Completer<List<int>>();
+        final processResumedCompleter = Completer<List<int>>();
+
+        final stdoutStream = Stream<List<int>>.fromFutures([
+          platformSelectCompleter.future,
+          processAttachCompleter.future,
+          setupStopHooksCompleter.future,
+          platformStatusCompleter.future,
+          processResumedCompleter.future,
+        ]);
+
+        final stdinController = StreamController<List<int>>();
+
+        final processCompleter = Completer<void>();
+        final lldbCommand = FakeLLDBCommand(
+          command: const <String>['xcrun', 'lldb'],
+          completer: processCompleter,
+          stdin: io.IOSink(stdinController.sink),
+          stdout: stdoutStream,
+          stderr: const Stream.empty(),
+        );
+
+        final logger = BufferLogger.test();
+
+        final processManager = FakeLLDBProcessManager([lldbCommand]);
+        final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+        final lldb = LLDB(
+          logger: logger,
+          processUtils: processUtils,
+          xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+          deviceVersion: Version(16, 0, 0),
+        );
+
+        final Map<String, ({Completer<List<int>> completer, String out})?>
+        inputsAndOutputs = buildAttachInputsAndOutputs(
+          breakPointMatcher:
+              r"breakpoint set --auto-continue true --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'",
+          processResumingOutput: 'Process $_appProcessId resuming\n',
+          breakPointCompleter: null,
+          processAttachCompleter: processAttachCompleter,
+          setupStopHooksCompleter: setupStopHooksCompleter,
+          platformStatusCompleter: platformStatusCompleter,
+          processResumedCompleter: processResumedCompleter,
+        );
+        inputsAndOutputs.addAll({
+          'platform select remote-ios --sysroot "${archSymbols.path}"': null,
+        });
+
+        stdinController.stream
+            .transform<String>(utf8.decoder)
+            .transform(const LineSplitter())
+            .listen((String line) {
+              final ({Completer<List<int>> completer, String out})? x = inputsAndOutputs.remove(
+                line,
+              );
+              if (x != null) {
+                x.completer.complete(utf8.encode(x.out));
+              }
+            });
+
+        final bool success = await lldb.attachAndStart(
+          deviceId: _deviceId,
+          appProcessId: _appProcessId,
+          lldbLogForwarder: FakeLLDBLogForwarder(),
+          mode: BuildMode.profile,
+          deviceSupport: createDeviceSupport(
+            modelCode: 'iPhone15,2',
+            operatingSystemVersion: '17.0',
+            cpuArchitectureString: 'arm64e',
+            homeDirectory: homeDir,
+          ),
+        );
+
+        expect(success, isTrue);
+        expect(inputsAndOutputs, isEmpty);
+      },
+    );
+
+    testWithoutContext(
+      'sends platform select remote-ios sysroot for non-arch symbol directory',
+      () async {
+        final fileSystem = MemoryFileSystem.test();
+        final Directory homeDir = fileSystem.directory('/Users/username');
+        final Directory symbols =
+            homeDir
+                .childDirectory('Library')
+                .childDirectory('Developer')
+                .childDirectory('Xcode')
+                .childDirectory('iOS DeviceSupport')
+                .childDirectory('iPhone15,2 17.0')
+                .childDirectory('Symbols')
+              ..createSync(recursive: true);
+
+        final platformSelectCompleter = Completer<List<int>>();
+        final processAttachCompleter = Completer<List<int>>();
+        final setupStopHooksCompleter = Completer<List<int>>();
+        final platformStatusCompleter = Completer<List<int>>();
+        final processResumedCompleter = Completer<List<int>>();
+
+        final stdoutStream = Stream<List<int>>.fromFutures([
+          platformSelectCompleter.future,
+          processAttachCompleter.future,
+          setupStopHooksCompleter.future,
+          platformStatusCompleter.future,
+          processResumedCompleter.future,
+        ]);
+
+        final stdinController = StreamController<List<int>>();
+
+        final processCompleter = Completer<void>();
+        final lldbCommand = FakeLLDBCommand(
+          command: const <String>['xcrun', 'lldb'],
+          completer: processCompleter,
+          stdin: io.IOSink(stdinController.sink),
+          stdout: stdoutStream,
+          stderr: const Stream.empty(),
+        );
+
+        final logger = BufferLogger.test();
+
+        final processManager = FakeLLDBProcessManager([lldbCommand]);
+        final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+        final lldb = LLDB(
+          logger: logger,
+          processUtils: processUtils,
+          xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+          deviceVersion: Version(16, 0, 0),
+        );
+
+        final Map<String, ({Completer<List<int>> completer, String out})?>
+        inputsAndOutputs = buildAttachInputsAndOutputs(
+          breakPointMatcher:
+              r"breakpoint set --auto-continue true --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'",
+          processResumingOutput: 'Process $_appProcessId resuming\n',
+          breakPointCompleter: null,
+          processAttachCompleter: processAttachCompleter,
+          setupStopHooksCompleter: setupStopHooksCompleter,
+          platformStatusCompleter: platformStatusCompleter,
+          processResumedCompleter: processResumedCompleter,
+        );
+        inputsAndOutputs.addAll({'platform select remote-ios --sysroot "${symbols.path}"': null});
+
+        stdinController.stream
+            .transform<String>(utf8.decoder)
+            .transform(const LineSplitter())
+            .listen((String line) {
+              final ({Completer<List<int>> completer, String out})? x = inputsAndOutputs.remove(
+                line,
+              );
+              if (x != null) {
+                x.completer.complete(utf8.encode(x.out));
+              }
+            });
+
+        final bool success = await lldb.attachAndStart(
+          deviceId: _deviceId,
+          appProcessId: _appProcessId,
+          lldbLogForwarder: FakeLLDBLogForwarder(),
+          mode: BuildMode.profile,
+          deviceSupport: createDeviceSupport(
+            modelCode: 'iPhone15,2',
+            operatingSystemVersion: '17.0',
+            cpuArchitectureString: 'arm64e',
+            homeDirectory: homeDir,
+          ),
+        );
+
+        expect(success, isTrue);
+        expect(inputsAndOutputs, isEmpty);
+      },
+    );
   });
 
   group('LLDBLogForwarder', () {
@@ -559,6 +980,145 @@ Target 0: (Runner) stopped.
       await exitCompleter.future;
       lldbLogForwarder.addLog('hello world');
     });
+  });
+
+  testWithoutContext('Stops are handled manually for iOS 27+', () async {
+    final breakPointCompleter = Completer<List<int>>();
+    final processAttachCompleter = Completer<List<int>>();
+    final platformStatusCompleter = Completer<List<int>>();
+    final processResumedCompleter = Completer<List<int>>();
+    final breakpointStopCompleter = Completer<List<int>>();
+    final breakpointContinueCompleter = Completer<List<int>>();
+    final normalLogCompleter = Completer<List<int>>();
+    final crashCompleter = Completer<List<int>>();
+    final backtraceCompleter = Completer<void>();
+    final detachCompleter = Completer<void>();
+
+    var isAttached = false;
+
+    final stdoutStream = Stream<List<int>>.fromFutures([
+      breakPointCompleter.future,
+      processAttachCompleter.future,
+      platformStatusCompleter.future,
+      processResumedCompleter.future.whenComplete(() => isAttached = true),
+      breakpointStopCompleter.future,
+      breakpointContinueCompleter.future,
+      normalLogCompleter.future,
+      crashCompleter.future,
+    ]);
+
+    final stdinController = StreamController<List<int>>();
+
+    final processCompleter = Completer<void>();
+    final lldbCommand = FakeLLDBCommand(
+      command: const <String>['xcrun', 'lldb'],
+      completer: processCompleter,
+      stdin: io.IOSink(stdinController.sink),
+      stdout: stdoutStream,
+      stderr: const Stream.empty(),
+    );
+
+    final logger = BufferLogger.test();
+
+    final processManager = FakeLLDBProcessManager([lldbCommand]);
+    final processUtils = ProcessUtils(processManager: processManager, logger: logger);
+    final lldb = LLDB(
+      logger: logger,
+      processUtils: processUtils,
+      xcodeProjectInterpreter: FakeXcodeProjectInterpreter(),
+      deviceVersion: Version(27, 0, 0),
+    );
+
+    const breakPointMatcher = r"breakpoint set --func-regex '^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$'";
+    final unexpectedInputs = ['Stop hook #1 added.\n'];
+    final Map<String, ({Completer<List<int>> completer, String out})?> inputsAndOutputs =
+        buildAttachInputsAndOutputs(
+          breakPointMatcher: breakPointMatcher,
+          processResumingOutput: '1 location added to breakpoint 1\n',
+          breakPointCompleter: breakPointCompleter,
+          processAttachCompleter: processAttachCompleter,
+          platformStatusCompleter: platformStatusCompleter,
+          processResumedCompleter: processResumedCompleter,
+          setupStopHooksCompleter: null,
+        );
+
+    stdinController.stream.transform<String>(utf8.decoder).transform(const LineSplitter()).listen((
+      String line,
+    ) {
+      final ({Completer<List<int>> completer, String out})? x = inputsAndOutputs.remove(line);
+      if (x != null) {
+        x.completer.complete(utf8.encode(x.out));
+      }
+      expect(unexpectedInputs.contains(line), isFalse);
+      if (isAttached && line == 'process continue') {
+        breakpointContinueCompleter.complete(utf8.encode('Process $_appProcessId resuming\n'));
+      }
+      if (line == 'thread backtrace all') {
+        backtraceCompleter.complete();
+      }
+      if (line == 'detach') {
+        detachCompleter.complete();
+      }
+    });
+
+    final lldbLogForwarder = FakeLLDBLogForwarder();
+    final bool success = await lldb.attachAndStart(
+      deviceId: _deviceId,
+      appProcessId: _appProcessId,
+      lldbLogForwarder: lldbLogForwarder,
+      mode: BuildMode.debug,
+      deviceSupport: createDeviceSupport(),
+    );
+    expect(success, isTrue);
+    expect(inputsAndOutputs, isEmpty);
+
+    // Simulate a breakpoint stop after attached.
+    breakpointStopCompleter.complete(
+      utf8.encode('''
+Process $_appProcessId stopped
+* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+    frame #0: 0x0000000107996d18 Flutter`NOTIFY_DEBUGGER_ABOUT_RX_PAGES
+Flutter`NOTIFY_DEBUGGER_ABOUT_RX_PAGES:
+->  0x107996d18 <+0>: ret
+
+Flutter`dart::VirtualMemory::AllocateAligned:
+    0x107996d1c <+0>: stp    x28, x27, [sp, #-0x50]!
+    0x107996d20 <+4>: stp    x24, x23, [sp, #0x10]
+    0x107996d24 <+8>: stp    x22, x21, [sp, #0x20]
+Target 0: (Flutter Gallery) stopped.
+'''),
+    );
+    await breakpointContinueCompleter.future;
+
+    // Verify Breakpoint stop logs should not be printed.
+    expect(lldbLogForwarder.logs, isEmpty);
+    expect(logger.traceText, isNot(contains('NOTIFY_DEBUGGER_ABOUT_RX_PAGES')));
+
+    // Verify normal logs are printed
+    normalLogCompleter.complete(utf8.encode('Hello World\n'));
+    await pumpEventQueue();
+    expect(lldbLogForwarder.logs, contains('Hello World'));
+
+    // Simulate a crash stop while attached.
+    crashCompleter.complete(
+      utf8.encode('''
+Process $_appProcessId stopped
+* thread #1, stop reason = EXC_BAD_ACCESS (code=1, address=0x0)
+    frame #0: 0x0000000102c7b240 my_crashed_code
+Target 0: (Runner) stopped.
+'''),
+    );
+
+    await backtraceCompleter.future;
+    await detachCompleter.future;
+
+    // Verify crash logs are printed
+    expect(lldbLogForwarder.logs, contains('Process $_appProcessId stopped'));
+    expect(
+      lldbLogForwarder.logs,
+      contains('* thread #1, stop reason = EXC_BAD_ACCESS (code=1, address=0x0)'),
+    );
+    expect(lldbLogForwarder.logs, contains('Target 0: (Runner) stopped.'));
   });
 }
 
@@ -758,3 +1318,76 @@ class FakeLLDBLogForwarder extends Fake implements LLDBLogForwarder {
     }
   }
 }
+<<<<<<< HEAD
+=======
+
+IOSDeviceSupport createDeviceSupport({
+  Logger? logger,
+  ProcessUtils? processUtils,
+  Directory? homeDirectory,
+  String? modelCode,
+  String? operatingSystemVersion,
+  String? cpuArchitectureString,
+  String deviceId = '123',
+}) {
+  final Logger testLogger = logger ?? BufferLogger.test();
+  return IOSDeviceSupport(
+    logger: testLogger,
+    processUtils:
+        processUtils ??
+        ProcessUtils(processManager: FakeProcessManager.empty(), logger: testLogger),
+    xcode: null,
+    homeDirectory: homeDirectory,
+    modelCode: modelCode,
+    operatingSystemVersion: operatingSystemVersion,
+    cpuArchitectureString: cpuArchitectureString,
+    deviceId: _deviceId,
+  );
+}
+
+/// Builds a map of expected stdin command inputs sent to LLDB during [LLDB.attachAndStart]
+/// and their corresponding simulated stdout outputs and completers.
+Map<String, ({Completer<List<int>> completer, String out})?> buildAttachInputsAndOutputs({
+  required String breakPointMatcher,
+  required String processResumingOutput,
+  required Completer<List<int>>? breakPointCompleter,
+  required Completer<List<int>> processAttachCompleter,
+  required Completer<List<int>> platformStatusCompleter,
+  required Completer<List<int>> processResumedCompleter,
+  required Completer<List<int>>? setupStopHooksCompleter,
+}) {
+  const processAttachMatcher = 'device process attach --pid $_appProcessId';
+  const processContinueMatcher = 'process continue';
+  const setupStopHooksMatcher = 'target stop-hook add -o "thread backtrace all" -o "detach"';
+  const platformStatusMatcher = 'platform status';
+  return {
+    'device select $_deviceId': null,
+    if (breakPointCompleter != null) ...{
+      breakPointMatcher: (
+        out: 'Breakpoint $_breakpointId: no locations (pending).\n',
+        completer: breakPointCompleter,
+      ),
+      'breakpoint command add --script-type python $_breakpointId': null,
+      'script lldb.debugger.SetAsync(False)': null,
+    },
+    processAttachMatcher: (
+      out: '''
+Process 568 stopped
+* thread #1, stop reason = signal SIGSTOP
+    frame #0: 0x0000000102c7b240 dyld`_dyld_start
+dyld`_dyld_start:
+->  0x102c7b240 <+0>:  mov    x0, sp
+    0x102c7b244 <+4>:  and    sp, x0, #0xfffffffffffffff0
+    0x102c7b248 <+8>:  mov    x29, #0x0 ; =0
+    0x102c7b24c <+12>: mov    x30, #0x0 ; =0
+Target 0: (Runner) stopped.
+''',
+      completer: processAttachCompleter,
+    ),
+    if (setupStopHooksCompleter != null)
+      setupStopHooksMatcher: (out: 'Stop hook #1 added.\n', completer: setupStopHooksCompleter),
+    platformStatusMatcher: (out: '  Platform: remote-ios\n', completer: platformStatusCompleter),
+    processContinueMatcher: (out: processResumingOutput, completer: processResumedCompleter),
+  };
+}
+>>>>>>> 737ba8f885dc774b53b442759999a312c9461e4e
